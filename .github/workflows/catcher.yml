@@ -2,8 +2,8 @@ name: Oracle Cloud ARM Catcher
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # يعمل تلقائياً كل 5 دقائق
-  workflow_dispatch: # يتيح لك تشغيله يدوياً بضغطة زر
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   catch:
@@ -29,11 +29,6 @@ jobs:
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/config/oci_api_key.pem
           chmod 600 ~/.oci/config/oci_api_key.pem
 
-            - name: Run Catcher via Stack
-        env:
-          COMPARTMENT_ID: ${{ secrets.OCI_TENANCY_ID }}
-          OCPUS: 2
-          MEMORY_GB: 12
+      - name: Run Catcher via Stack
         run: |
           oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
-
