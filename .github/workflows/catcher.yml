@@ -31,4 +31,4 @@ jobs:
 
       - name: Run Catcher via Stack
         run: |
-          oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
+          $HOME/.local/bin/oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
