@@ -12,9 +12,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install oci-arm-catcher
+      - name: Download Installer
+        run: wget -O installer.sh https://github.com
+
+      - name: Install Catcher
         run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://github.com | sh
+          sh installer.sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Create OCI Config
@@ -30,5 +33,4 @@ jobs:
           chmod 600 ~/.oci/config/oci_api_key.pem
 
       - name: Run Catcher via Stack
-        run: |
-          $HOME/.local/bin/oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
+        run: $HOME/.local/bin/oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
