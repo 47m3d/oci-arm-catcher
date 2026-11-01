@@ -12,23 +12,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Oracle Cloud CLI
-        run: |
-          bash -c "$(curl -L https://githubusercontent.com)" -- --accept-all-defaults
-          echo "/home/runner/bin" >> $GITHUB_PATH
-
-      - name: Configure OCI CLI
-        run: |
-          mkdir -p ~/.oci
-          echo "[DEFAULT]" > ~/.oci/config
-          echo "user=${{ secrets.OCI_USER_ID }}" >> ~/.oci/config
-          echo "fingerprint=${{ secrets.OCI_FINGERPRINT }}" >> ~/.oci/config
-          echo "tenancy=${{ secrets.OCI_TENANCY_ID }}" >> ~/.oci/config
-          echo "region=${{ secrets.OCI_REGION }}" >> ~/.oci/config
-          echo "key_file=~/.oci/oci_api_key.pem" >> ~/.oci/config
-          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/api_key.pem
-          chmod 600 ~/.oci/api_key.pem
+      - name: Configure Oracle Cloud CLI
+        uses: oracle-actions/setup-oci-cli@v1.3.1
+        with:
+          user: ${{ secrets.OCI_USER_ID }}
+          fingerprint: ${{ secrets.OCI_FINGERPRINT }}
+          tenancy: ${{ secrets.OCI_TENANCY_ID }}
+          region: ${{ secrets.OCI_REGION }}
+          api_key: ${{ secrets.OCI_PRIVATE_KEY }}
 
       - name: Run Stack Apply Job
         run: |
-          /home/runner/bin/oci resource-manager job create-apply-job --stack-id "${{ secrets.OCI_STACK_ID }}" --execution-plan-strategy FROM_PLAN_JOB_ID_OR_LATEST_SUCCESSFUL_PLAN_JOB
+          oci resource-manager job create-apply-job --stack-id "${{ secrets.OCI_STACK_ID }}" --execution-plan-strategy FROM_PLAN_JOB_ID_OR_LATEST_SUCCESSFUL_PLAN_JOB
