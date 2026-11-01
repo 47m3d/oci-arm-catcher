@@ -29,10 +29,11 @@ jobs:
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/config/oci_api_key.pem
           chmod 600 ~/.oci/config/oci_api_key.pem
 
-      - name: Run Catcher via Stack
+            - name: Run Catcher via Stack
         env:
-          OCI_STACK_ID: ${{ secrets.OCI_STACK_ID }}
+          COMPARTMENT_ID: ${{ secrets.OCI_TENANCY_ID }}
           OCPUS: 2
           MEMORY_GB: 12
         run: |
-          oci-arm-catcher --stack-id "$OCI_STACK_ID" --ocpus "$OCPUS" --memory-gb "$MEMORY_GB"
+          oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
+
