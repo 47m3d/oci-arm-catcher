@@ -12,15 +12,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Installer
-        run: wget -O installer.sh https://github.com
-
-      - name: Install Catcher
+      - name: Install Oracle Cloud CLI
         run: |
-          sh installer.sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          bash -c "$(curl -L https://githubusercontent.com)" -- --accept-all-defaults
+          echo "/home/runner/bin" >> $GITHUB_PATH
 
-      - name: Create OCI Config
+      - name: Configure OCI CLI
         run: |
           mkdir -p ~/.oci
           echo "[DEFAULT]" > ~/.oci/config
@@ -32,5 +29,6 @@ jobs:
           echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/config/oci_api_key.pem
           chmod 600 ~/.oci/config/oci_api_key.pem
 
-      - name: Run Catcher via Stack
-        run: $HOME/.local/bin/oci-arm-catcher --stack-id "${{ secrets.OCI_STACK_ID }}"
+      - name: Run Stack Apply Job
+        run: |
+          /home/runner/bin/oci resource-manager job create-apply-job --stack-id "${{ secrets.OCI_STACK_ID }}" --execution-plan-strategy FROM_PLAN_JOB_ID_OR_LATEST_SUCCESSFUL_PLAN_JOB
