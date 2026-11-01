@@ -12,15 +12,47 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure Oracle Cloud CLI
-        uses: oracle-actions/setup-oci-cli@v1.3.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          user: ${{ secrets.OCI_USER_ID }}
-          fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          tenancy: ${{ secrets.OCI_TENANCY_ID }}
-          region: ${{ secrets.OCI_REGION }}
-          api_key: ${{ secrets.OCI_PRIVATE_KEY }}
+          python-python: '3.10'
 
-      - name: Run Stack Apply Job
-        run: |
-          oci resource-manager job create-apply-job --stack-id "${{ secrets.OCI_STACK_ID }}" --execution-plan-strategy FROM_PLAN_JOB_ID_OR_LATEST_SUCCESSFUL_PLAN_JOB
+      - name: Install OCI SDK
+        run: pip install oci
+
+      - name: Run Stack Apply Job via Python
+        env:
+          OCI_USER: ${{ secrets.OCI_USER_ID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY_ID }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCI_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_STACK_ID: ${{ secrets.OCI_STACK_ID }}
+        运营: |
+          python -c "
+          import oci
+          import os
+
+          config = {
+              'user': os.environ['OCI_USER'],
+              'fingerprint': os.environ['OCI_FINGERPRINT'],
+              'tenancy': os.environ['OCI_TENANCY'],
+              'region': os.environ['OCI_REGION'],
+              'key_content': os.environ['OCI_KEY'].strip()
+          }
+
+          rm_client = oci.resource_manager.ResourceManagerClient(config)
+          
+          try:
+              job_details = oci.resource_manager.models.CreateApplyJobDetails(
+                  execution_plan_strategy='FROM_PLAN_JOB_ID_OR_LATEST_SUCCESSFUL_PLAN_JOB'
+              )
+              request_details = oci.resource_manager.models.CreateJobDetails(
+                  stack_id=os.environ['OCI_STACK_ID'],
+                  job_operation_details=job_details
+              )
+              response = rm_client.create_job(create_job_details=request_details)
+              print('Job triggered successfully! ID:', response.data.id)
+          except Exception as e:
+              print('Oracle Response:', str(e))
+          "
