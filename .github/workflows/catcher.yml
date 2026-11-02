@@ -9,13 +9,10 @@ jobs:
   catch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-python: '3.10'
+          python-version: '3.10'
 
       - name: Install OCI SDK
         run: pip install oci
@@ -28,10 +25,10 @@ jobs:
           OCI_REGION: ${{ secrets.OCI_REGION }}
           OCI_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
           OCI_STACK_ID: ${{ secrets.OCI_STACK_ID }}
-        运营: |
-          python -c "
-          import oci
+        run: |
+          python - <<'PY'
           import os
+          import oci
 
           config = {
               'user': os.environ['OCI_USER'],
@@ -42,17 +39,18 @@ jobs:
           }
 
           rm_client = oci.resource_manager.ResourceManagerClient(config)
-          
+
           try:
-              job_details = oci.resource_manager.models.CreateApplyJobDetails(
-                  execution_plan_strategy='FROM_PLAN_JOB_ID_OR_LATEST_SUCCESSFUL_PLAN_JOB'
+              job_details = oci.resource_manager.models.CreateApplyJobOperationDetails(
+                  execution_plan_strategy='AUTO_APPROVED'
               )
               request_details = oci.resource_manager.models.CreateJobDetails(
                   stack_id=os.environ['OCI_STACK_ID'],
+                  operation='APPLY',
                   job_operation_details=job_details
               )
               response = rm_client.create_job(create_job_details=request_details)
               print('Job triggered successfully! ID:', response.data.id)
           except Exception as e:
               print('Oracle Response:', str(e))
-          "
+          PY
