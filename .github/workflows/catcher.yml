@@ -2,12 +2,17 @@ name: Oracle Cloud ARM Catcher
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '0 */5 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: oci-catcher
+  cancel-in-progress: false
 
 jobs:
   catch:
     runs-on: ubuntu-latest
+    timeout-minutes: 340
     steps:
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -17,7 +22,7 @@ jobs:
       - name: Install OCI SDK
         run: pip install oci
 
-      - name: Run Stack Apply Job via Python
+      - name: Retry stack apply until capacity is available
         env:
           OCI_USER: ${{ secrets.OCI_USER_ID }}
           OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -27,7 +32,7 @@ jobs:
           OCI_STACK_ID: ${{ secrets.OCI_STACK_ID }}
         run: |
           python - <<'PY'
-          import os
+          import os, time
           import oci
 
           config = {
@@ -37,20 +42,32 @@ jobs:
               'region': os.environ['OCI_REGION'],
               'key_content': os.environ['OCI_KEY'].strip()
           }
+          rm = oci.resource_manager.ResourceManagerClient(config)
+          stack_id = os.environ['OCI_STACK_ID']
+          deadline = time.time() + 5 * 3600 + 1800
 
-          rm_client = oci.resource_manager.ResourceManagerClient(config)
-
-          try:
-              job_details = oci.resource_manager.models.CreateApplyJobOperationDetails(
-                  execution_plan_strategy='AUTO_APPROVED'
-              )
-              request_details = oci.resource_manager.models.CreateJobDetails(
-                  stack_id=os.environ['OCI_STACK_ID'],
-                  operation='APPLY',
-                  job_operation_details=job_details
-              )
-              response = rm_client.create_job(create_job_details=request_details)
-              print('Job triggered successfully! ID:', response.data.id)
-          except Exception as e:
-              print('Oracle Response:', str(e))
+          while time.time() < deadline:
+              try:
+                  job = rm.create_job(oci.resource_manager.models.CreateJobDetails(
+                      stack_id=stack_id,
+                      operation='APPLY',
+                      apply_job_plan_resolution=oci.resource_manager.models.ApplyJobPlanResolution(
+                          is_auto_approved=True)
+                  )).data
+                  print('Job started:', job.id, flush=True)
+                  while True:
+                      time.sleep(15)
+                      j = rm.get_job(job.id).data
+                      if j.lifecycle_state in ('SUCCEEDED', 'FAILED', 'CANCELED'):
+                          break
+                  print('Job state:', j.lifecycle_state, flush=True)
+                  if j.lifecycle_state == 'SUCCEEDED':
+                      print('SERVER CREATED!')
+                      raise SystemExit(0)
+              except SystemExit:
+                  raise
+              except Exception as e:
+                  print('Error:', str(e), flush=True)
+              time.sleep(60)
+          print('Time limit reached, next scheduled run will continue.')
           PY
