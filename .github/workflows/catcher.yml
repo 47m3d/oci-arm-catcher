@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: oci-catcher
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   catch:
@@ -47,6 +47,7 @@ jobs:
           deadline = time.time() + 5 * 3600 + 1800
 
           while time.time() < deadline:
+              wait = 300
               try:
                   job = rm.create_job(oci.resource_manager.models.CreateJobDetails(
                       stack_id=stack_id,
@@ -66,8 +67,13 @@ jobs:
                       raise SystemExit(0)
               except SystemExit:
                   raise
+              except oci.exceptions.ServiceError as e:
+                  print('Error:', e.status, e.code, flush=True)
+                  if e.status == 429:
+                      wait = 900
               except Exception as e:
                   print('Error:', str(e), flush=True)
-              time.sleep(60)
+              print('Waiting', wait, 'seconds before next try', flush=True)
+              time.sleep(wait)
           print('Time limit reached, next scheduled run will continue.')
           PY
